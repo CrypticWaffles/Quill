@@ -1,0 +1,108 @@
+/* GrammaR — injected into all pages */
+
+/* Error underlines on overlay spans */
+.grammarr-spell {
+  text-decoration: underline wavy #ef4444 !important;
+  text-decoration-thickness: 2px !important;
+  text-decoration-skip-ink: none !important;
+}
+
+.grammarr-grammar {
+  text-decoration: underline wavy #f59e0b !important;
+  text-decoration-thickness: 2px !important;
+  text-decoration-skip-ink: none !important;
+}
+
+/* Tooltip */
+.grammarr-tooltip {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  max-width: 300px !important;
+  min-width: 180px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #111827 !important;
+  display: none;
+  user-select: none;
+}
+
+.grammarr-tt-header {
+  margin-bottom: 6px !important;
+}
+
+.grammarr-tt-badge {
+  display: inline-block !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+}
+
+.grammarr-tt-spelling {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.grammarr-tt-grammar {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.grammarr-tt-msg {
+  margin: 0 0 10px 0 !important;
+  color: #374151 !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+
+.grammarr-tt-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+.grammarr-tt-fix {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 5px 11px !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  transition: background 0.12s !important;
+}
+
+.grammarr-tt-fix:hover {
+  background: #1d4ed8 !important;
+}
+
+.grammarr-tt-ignore {
+  background: transparent !important;
+  color: #6b7280 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  padding: 5px 11px !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  margin-left: auto !important;
+  transition: border-color 0.12s, color 0.12s !important;
+}
+
+.grammarr-tt-ignore:hover {
+  border-color: #9ca3af !important;
+  color: #374151 !important;
+}

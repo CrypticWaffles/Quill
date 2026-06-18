@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GrammaR</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: #111827;
+      background: #fff;
+    }
+
+    /* Header */
+    .header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg { display: block; }
+
+    .header-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #111827;
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 1px;
+    }
+
+    /* Section */
+    .section {
+      padding: 10px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .section:last-child { border-bottom: none; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 34px;
+    }
+
+    .row + .row { margin-top: 8px; }
+
+    label.row-label {
+      font-size: 13px;
+      color: #374151;
+      font-weight: 500;
+      cursor: default;
+    }
+
+    /* Toggle */
+    .toggle-wrap {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle-wrap input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #d1d5db;
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
+
+    .toggle-wrap input:checked + .toggle-track { background: #2563eb; }
+    .toggle-wrap input:checked + .toggle-track::after { transform: translateX(18px); }
+
+    /* Select */
+    select {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 4px 28px 4px 8px;
+      font-size: 13px;
+      color: #111827;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E") no-repeat right 8px center;
+      appearance: none;
+      cursor: pointer;
+      max-width: 160px;
+    }
+
+    select:focus { outline: 2px solid #93c5fd; outline-offset: 1px; }
+
+    /* API key input */
+    .full-row {
+      margin-top: 8px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-size: 13px;
+      color: #111827;
+      background: #fff;
+      font-family: inherit;
+    }
+
+    input[type="password"]:focus, input[type="text"]:focus {
+      outline: 2px solid #93c5fd;
+      outline-offset: 1px;
+    }
+
+    /* Claude section (hidden by default) */
+    #claudeSection { display: none; }
+
+    /* Legend / footer */
+    .legend {
+      padding: 10px 16px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .legend-dot {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-dot.spell { background: repeating-linear-gradient(90deg, #ef4444 0, #ef4444 3px, transparent 3px, transparent 6px); }
+    .legend-dot.grammar { background: repeating-linear-gradient(90deg, #f59e0b 0, #f59e0b 3px, transparent 3px, transparent 6px); }
+
+    /* Danger / clear button */
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 5px 11px;
+      font-size: 12px;
+      color: #6b7280;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color .12s, color .12s;
+    }
+
+    .btn-ghost:hover { border-color: #ef4444; color: #ef4444; }
+
+    .provider-note {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">
+      <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+        <path d="M2 3h12M2 7h8M2 11h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>GrammaR</h1>
+      <p>Grammar &amp; spelling checker</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="row">
+      <label class="row-label" for="toggleEnabled">Enable checker</label>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="toggleEnabled" checked>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="row">
+      <label class="row-label" for="languageSelect">Language</label>
+      <select id="languageSelect">
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
+        <option value="en-AU">English (AU)</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="pt-BR">Portuguese (BR)</option>
+        <option value="nl">Dutch</option>
+        <option value="it">Italian</option>
+        <option value="pl">Polish</option>
+        <option value="ru">Russian</option>
+        <option value="zh-CN">Chinese (Simplified)</option>
+        <option value="ja">Japanese</option>
+      </select>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <label class="row-label" for="providerSelect">Provider</label>
+      <select id="providerSelect">
+        <option value="languagetool">LanguageTool (free)</option>
+        <option value="claude">Claude AI</option>
+      </select>
+    </div>
+
+    <p class="provider-note" id="providerNote">No API key required.</p>
+
+    <div id="claudeSection">
+      <div class="full-row">
+        <span class="input-label">Anthropic API key</span>
+        <input type="password" id="claudeApiKey" placeholder="sk-ant-…" autocomplete="off">
+      </div>
+      <div class="full-row" style="margin-top:8px;">
+        <label class="row-label" for="claudeModel" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;font-weight:600;">Model</label>
+        <select id="claudeModel" style="margin-top:4px;max-width:100%;width:100%;">
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fast)</option>
+          <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (accurate)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="row">
+      <label class="row-label">Ignored words</label>
+      <button class="btn-ghost" id="clearIgnored">Clear all</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot spell"></div>
+      Spelling
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot grammar"></div>
+      Grammar
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
