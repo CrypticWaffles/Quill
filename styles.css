@@ -115,3 +115,36 @@
   border-color: #9ca3af !important;
   color: #374151 !important;
 }
+
+@media (prefers-color-scheme: dark) {
+  .grammarr-tooltip {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #f9fafb !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .grammarr-tt-msg {
+    color: #d1d5db !important;
+  }
+
+  .grammarr-tt-spelling {
+    background: #7f1d1d !important;
+    color: #fca5a5 !important;
+  }
+
+  .grammarr-tt-grammar {
+    background: #78350f !important;
+    color: #fcd34d !important;
+  }
+
+  .grammarr-tt-ignore {
+    border-color: #4b5563 !important;
+    color: #9ca3af !important;
+  }
+
+  .grammarr-tt-ignore:hover {
+    border-color: #6b7280 !important;
+    color: #d1d5db !important;
+  }
+}

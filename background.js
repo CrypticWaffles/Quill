@@ -14,12 +14,22 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'CHECK_TEXT') {
     handleCheck(msg).then(sendResponse).catch(err => {
       sendResponse({ error: err.message });
     });
     return true; // keep channel open for async response
+  }
+
+  if (msg.type === 'UPDATE_BADGE') {
+    const tabId = sender.tab?.id;
+    if (tabId !== undefined) {
+      const count = msg.count || 0;
+      const text = count > 0 ? (count > 99 ? '99' : String(count)) : '';
+      chrome.action.setBadgeText({ text, tabId });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444', tabId });
+    }
   }
 });
 

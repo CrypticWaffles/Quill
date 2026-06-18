@@ -396,6 +396,8 @@ async function checkElement(el, checkId) {
   } else {
     highlightContentEditable(el, s.matches);
   }
+
+  updateBadge();
 }
 
 function scheduleCheck(el) {
@@ -413,6 +415,7 @@ function clearMatches(el) {
   s.matches = [];
   if (s.overlay) s.overlay.innerHTML = '';
   if (el.isContentEditable) stripCeSpans(el);
+  updateBadge();
 }
 
 function rerenderAll() {
@@ -436,6 +439,15 @@ function clearAllHighlights() {
   });
   hideTooltip();
   elementState.forEach(s => { s.overlay = null; s.matches = []; });
+  updateBadge();
+}
+
+function updateBadge() {
+  let total = 0;
+  elementState.forEach(s => { total += s.matches?.length || 0; });
+  try {
+    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE', count: total });
+  } catch { /* extension context invalidated */ }
 }
 
 // ---- Element setup ----
@@ -459,6 +471,19 @@ function setupElement(el) {
   elementState.set(el, { timer: null, checkId: 0, matches: [], overlay });
 
   el.addEventListener('input', () => scheduleCheck(el));
+
+  // Paste/drop fire before content is inserted, so yield first then check sooner
+  const fastCheck = () => setTimeout(() => {
+    const s = elementState.get(el);
+    if (!s) return;
+    clearTimeout(s.timer);
+    const id = Date.now();
+    s.checkId = id;
+    s.timer = setTimeout(() => checkElement(el, id), 300);
+  }, 0);
+  el.addEventListener('paste', fastCheck);
+  el.addEventListener('drop', fastCheck);
+
   el.addEventListener('focus', () => {
     const s = elementState.get(el);
     if (s?.overlay) positionOverlay(el, s.overlay);

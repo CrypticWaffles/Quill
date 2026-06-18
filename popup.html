@@ -209,6 +209,31 @@
       margin-top: 6px;
       line-height: 1.4;
     }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #111827; color: #f9fafb; }
+      .header { border-color: #1f2937; }
+      .header-text h1 { color: #f9fafb; }
+      .section { border-color: #1f2937; }
+      .row-label { color: #e5e7eb; }
+      .input-label { color: #9ca3af; }
+      select {
+        background-color: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");
+      }
+      input[type="password"], input[type="text"] {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+      }
+      .toggle-track { background: #4b5563; }
+      .btn-ghost { border-color: #374151; color: #9ca3af; }
+      .btn-ghost:hover { border-color: #ef4444; color: #ef4444; }
+      .provider-note { color: #6b7280; }
+      .legend-item { color: #9ca3af; }
+    }
   </style>
 </head>
 <body>
