@@ -1,6 +1,6 @@
 /* GrammaR — injected into all pages */
 
-/* Error underlines on overlay spans */
+/* Error underlines — used in both overlay spans and direct CE injection */
 .grammarr-spell {
   text-decoration: underline wavy #ef4444 !important;
   text-decoration-thickness: 2px !important;
@@ -11,6 +11,15 @@
   text-decoration: underline wavy #f59e0b !important;
   text-decoration-thickness: 2px !important;
   text-decoration-skip-ink: none !important;
+}
+
+/* CE spans injected directly into contenteditable — must not affect layout */
+.grammarr-ce {
+  display: inline !important;
+  color: inherit !important;
+  background: none !important;
+  font: inherit !important;
+  cursor: pointer !important;
 }
 
 /* Tooltip */

@@ -2,8 +2,9 @@
 
 const DEBOUNCE_MS = 1000;
 const MIN_TEXT = 3;
+const CE_CLASS = 'grammarr-ce'; // marks spans we injected into contenteditable
 
-// Copied from computed style to overlay div so text layout matches
+// Copied from computed style to overlay div so textarea text layout matches
 const LAYOUT_PROPS = [
   'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant',
   'lineHeight', 'letterSpacing', 'wordSpacing', 'textTransform', 'textIndent',
@@ -35,7 +36,7 @@ chrome.storage.sync.get(null, (prefs) => {
 chrome.storage.onChanged.addListener((changes) => {
   if ('enabled' in changes) {
     settings.enabled = changes.enabled.newValue;
-    if (!settings.enabled) removeAllOverlays();
+    if (!settings.enabled) clearAllHighlights();
   }
   if ('language' in changes) settings.language = changes.language.newValue;
   if ('provider' in changes) settings.provider = changes.provider.newValue;
@@ -103,7 +104,6 @@ function showTooltip(match, rect, targetEl) {
 
   tt.style.display = 'block';
 
-  // Position: below error word, clamped to viewport
   const w = 300;
   let top = rect.bottom + 6;
   let left = rect.left;
@@ -135,6 +135,25 @@ function filterMatches(matches, text) {
   });
 }
 
+// Remove overlapping matches. Sort spelling before grammar so spelling wins ties.
+function deduplicateMatches(matches) {
+  const sorted = matches.slice().sort((a, b) => {
+    if (a.offset !== b.offset) return a.offset - b.offset;
+    if (a.type === 'spelling' && b.type !== 'spelling') return -1;
+    if (b.type === 'spelling' && a.type !== 'spelling') return 1;
+    return b.length - a.length;
+  });
+  const result = [];
+  let end = -1;
+  for (const m of sorted) {
+    if (m.offset >= end) {
+      result.push(m);
+      end = m.offset + m.length;
+    }
+  }
+  return result;
+}
+
 // ---- Fix application ----
 
 function applyFix(el, match, replacement) {
@@ -142,51 +161,26 @@ function applyFix(el, match, replacement) {
     el.setRangeText(replacement, match.offset, match.offset + match.length, 'end');
     el.dispatchEvent(new Event('input', { bubbles: true }));
   } else if (el.isContentEditable) {
+    // Strip existing spans first so textRangeInElement sees clean text nodes
+    stripCeSpans(el);
     const range = textRangeInElement(el, match.offset, match.offset + match.length);
     if (!range) return;
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
     document.execCommand('insertText', false, replacement);
+    // input event fires after execCommand, which re-schedules a check
   }
 }
 
-function textRangeInElement(container, start, end) {
-  let count = 0;
-  let startNode = null, endNode = null, startOff = 0, endOff = 0;
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-  while (walker.nextNode()) {
-    const node = walker.currentNode;
-    const len = node.length;
-    if (!startNode && count + len > start) {
-      startNode = node;
-      startOff = start - count;
-    }
-    if (!endNode && count + len >= end) {
-      endNode = node;
-      endOff = end - count;
-      break;
-    }
-    count += len;
-  }
-  if (!startNode) return null;
-  if (!endNode) { endNode = startNode; endOff = startNode.length; }
-  const range = document.createRange();
-  range.setStart(startNode, Math.min(startOff, startNode.length));
-  range.setEnd(endNode, Math.min(endOff, endNode.length));
-  return range;
-}
-
-// ---- Overlay creation ----
+// ---- Textarea/Input overlay ----
 
 function buildOverlay(el, isMultiline) {
   const overlay = document.createElement('div');
   overlay.className = 'grammarr-overlay';
 
   const cs = window.getComputedStyle(el);
-  for (const prop of LAYOUT_PROPS) {
-    overlay.style[prop] = cs[prop];
-  }
+  for (const prop of LAYOUT_PROPS) overlay.style[prop] = cs[prop];
 
   if (isMultiline) {
     overlay.style.whiteSpace = 'pre-wrap';
@@ -220,9 +214,15 @@ function positionOverlay(el, overlay) {
   overlay.style.height = r.height + 'px';
 }
 
-// ---- Overlay rendering ----
+function renderTextareaOverlay(el, matches) {
+  const s = elementState.get(el);
+  if (!s?.overlay) return;
 
-function buildHighlightedHtml(text, sorted) {
+  const text = el.value;
+  const sorted = deduplicateMatches(filterMatches(matches, text));
+
+  positionOverlay(el, s.overlay);
+
   let html = '';
   let pos = 0;
   for (let i = 0; i < sorted.length; i++) {
@@ -236,56 +236,126 @@ function buildHighlightedHtml(text, sorted) {
     pos = m.offset + m.length;
   }
   html += escapeHtml(text.slice(pos));
-  return html;
-}
 
-function wireSpanClicks(overlay, sorted, targetEl) {
-  overlay.querySelectorAll('[data-idx]').forEach(span => {
+  s.overlay.innerHTML = html;
+  s.overlay.scrollTop = el.scrollTop;
+  s.overlay.scrollLeft = el.scrollLeft;
+
+  s.overlay.querySelectorAll('[data-idx]').forEach(span => {
     span.style.pointerEvents = 'auto';
     span.style.cursor = 'pointer';
     const idx = parseInt(span.dataset.idx, 10);
     span.addEventListener('click', (e) => {
       e.stopPropagation();
       const match = sorted[idx];
-      if (match) showTooltip(match, span.getBoundingClientRect(), targetEl);
+      if (match) showTooltip(match, span.getBoundingClientRect(), el);
     });
   });
 }
 
-function renderTextareaOverlay(el, matches) {
-  const s = elementState.get(el);
-  if (!s?.overlay) return;
+// ---- ContentEditable: direct span injection ----
+// Spans are injected into the live DOM so underlines are pixel-perfect.
 
-  const text = el.value;
-  const filtered = filterMatches(matches, text);
-  const sorted = filtered.slice().sort((a, b) => a.offset - b.offset);
+function highlightContentEditable(el, matches) {
+  const text = el.innerText || '';
+  const sorted = deduplicateMatches(filterMatches(matches, text));
 
-  positionOverlay(el, s.overlay);
-  s.overlay.innerHTML = buildHighlightedHtml(text, sorted);
-  s.overlay.scrollTop = el.scrollTop;
-  s.overlay.scrollLeft = el.scrollLeft;
-  wireSpanClicks(s.overlay, sorted, el);
-}
+  const cursor = getCaretOffset(el);
 
-function renderContentEditableOverlay(el, matches) {
-  const s = elementState.get(el);
-  if (!s) return;
+  stripCeSpans(el); // remove previous highlights
 
-  if (!s.overlay) {
-    s.overlay = buildOverlay(el, true);
-    // Match additional CE-specific styles
-    const cs = window.getComputedStyle(el);
-    s.overlay.style.whiteSpace = cs.whiteSpace || 'normal';
-    s.overlay.style.wordBreak = cs.wordBreak;
+  // Insert from END to START so earlier offsets stay valid
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const m = sorted[i];
+    m._word = text.slice(m.offset, m.offset + m.length);
+    insertCeSpan(el, m);
   }
 
-  const text = el.innerText || '';
-  const filtered = filterMatches(matches, text);
-  const sorted = filtered.slice().sort((a, b) => a.offset - b.offset);
+  if (cursor !== null) setCaretOffset(el, cursor);
+}
 
-  positionOverlay(el, s.overlay);
-  s.overlay.innerHTML = buildHighlightedHtml(text, sorted);
-  wireSpanClicks(s.overlay, sorted, el);
+function stripCeSpans(el) {
+  el.querySelectorAll('.' + CE_CLASS).forEach(span => {
+    const parent = span.parentNode;
+    if (!parent) return;
+    while (span.firstChild) parent.insertBefore(span.firstChild, span);
+    parent.removeChild(span);
+  });
+  el.normalize();
+}
+
+function insertCeSpan(el, match) {
+  try {
+    const range = textRangeInElement(el, match.offset, match.offset + match.length);
+    if (!range) return;
+
+    const span = document.createElement('span');
+    span.className = `${CE_CLASS} ${match.type === 'spelling' ? 'grammarr-spell' : 'grammarr-grammar'}`;
+
+    try {
+      range.surroundContents(span);
+    } catch {
+      // Range crosses element boundaries — extract and rewrap
+      const fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    }
+
+    span.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showTooltip({ ...match, _word: span.textContent }, span.getBoundingClientRect(), el);
+    });
+  } catch {
+    // Skip this match if DOM manipulation fails
+  }
+}
+
+function getCaretOffset(el) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  if (!el.contains(range.startContainer)) return null;
+  const pre = document.createRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(range.startContainer, range.startOffset);
+  return pre.toString().length;
+}
+
+function setCaretOffset(el, offset) {
+  const range = textRangeInElement(el, offset, offset);
+  if (!range) return;
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// ---- Shared DOM utility ----
+
+function textRangeInElement(container, start, end) {
+  let count = 0;
+  let startNode = null, endNode = null, startOff = 0, endOff = 0;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const len = node.length;
+    if (!startNode && count + len > start) {
+      startNode = node;
+      startOff = start - count;
+    }
+    if (!endNode && count + len >= end) {
+      endNode = node;
+      endOff = end - count;
+      break;
+    }
+    count += len;
+  }
+  if (!startNode) return null;
+  if (!endNode) { endNode = startNode; endOff = startNode.length; }
+  const range = document.createRange();
+  range.setStart(startNode, Math.min(startOff, startNode.length));
+  range.setEnd(endNode, Math.min(endOff, endNode.length));
+  return range;
 }
 
 // ---- API check ----
@@ -293,7 +363,7 @@ function renderContentEditableOverlay(el, matches) {
 async function checkElement(el, checkId) {
   if (!settings.enabled) return;
 
-  const isNative = el.value !== undefined;
+  const isNative = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT';
   const text = isNative ? el.value : (el.innerText || '');
   if (!text || text.trim().length < MIN_TEXT) {
     clearMatches(el);
@@ -311,11 +381,11 @@ async function checkElement(el, checkId) {
       claudeModel: settings.claudeModel
     });
   } catch {
-    return; // extension context invalidated
+    return;
   }
 
   const s = elementState.get(el);
-  if (!s || s.checkId !== checkId) return; // stale response
+  if (!s || s.checkId !== checkId) return; // stale
 
   if (!response || response.error) return;
 
@@ -324,7 +394,7 @@ async function checkElement(el, checkId) {
   if (isNative) {
     renderTextareaOverlay(el, s.matches);
   } else {
-    renderContentEditableOverlay(el, s.matches);
+    highlightContentEditable(el, s.matches);
   }
 }
 
@@ -342,18 +412,28 @@ function clearMatches(el) {
   if (!s) return;
   s.matches = [];
   if (s.overlay) s.overlay.innerHTML = '';
+  if (el.isContentEditable) stripCeSpans(el);
 }
 
 function rerenderAll() {
   elementState.forEach((s, el) => {
     if (!s.matches?.length) return;
-    if (el.value !== undefined) renderTextareaOverlay(el, s.matches);
-    else renderContentEditableOverlay(el, s.matches);
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      renderTextareaOverlay(el, s.matches);
+    } else {
+      highlightContentEditable(el, s.matches);
+    }
   });
 }
 
-function removeAllOverlays() {
+function clearAllHighlights() {
   document.querySelectorAll('.grammarr-overlay').forEach(o => o.remove());
+  document.querySelectorAll('.' + CE_CLASS).forEach(span => {
+    const parent = span.parentNode;
+    if (!parent) return;
+    while (span.firstChild) parent.insertBefore(span.firstChild, span);
+    parent.removeChild(span);
+  });
   hideTooltip();
   elementState.forEach(s => { s.overlay = null; s.matches = []; });
 }
@@ -374,8 +454,7 @@ function setupElement(el) {
   if (elementState.has(el) || !isCheckable(el)) return;
 
   const isNative = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT';
-  const isMultiline = el.tagName === 'TEXTAREA' || !isNative;
-  const overlay = isNative ? buildOverlay(el, isMultiline) : null;
+  const overlay = isNative ? buildOverlay(el, el.tagName === 'TEXTAREA') : null;
 
   elementState.set(el, { timer: null, checkId: 0, matches: [], overlay });
 
@@ -397,7 +476,7 @@ function setupElement(el) {
     });
   }
 
-  const initialText = el.value !== undefined ? el.value : el.innerText;
+  const initialText = isNative ? el.value : el.innerText;
   if (initialText && initialText.trim().length >= MIN_TEXT) scheduleCheck(el);
 }
 
@@ -412,10 +491,13 @@ function scan(root) {
 
 scan(document);
 
+// Watch for dynamically added elements (SPAs, modals, etc.)
 const observer = new MutationObserver((mutations) => {
   for (const m of mutations) {
     for (const node of m.addedNodes) {
       if (node.nodeType !== Node.ELEMENT_NODE) continue;
+      // Skip spans we injected — don't re-scan our own CE spans
+      if (node.classList?.contains(CE_CLASS)) continue;
       if (isCheckable(node)) setupElement(node);
       scan(node);
     }
@@ -431,7 +513,7 @@ if (document.body) {
   });
 }
 
-// Reposition overlays on scroll/resize
+// Reposition textarea overlays on scroll/resize
 window.addEventListener('scroll', () => {
   elementState.forEach((s, el) => {
     if (s.overlay) positionOverlay(el, s.overlay);
